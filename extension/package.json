@@ -1,0 +1,30 @@
+{
+  "name": "tarakkihub-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "TarakkiHub Chrome extension (MV3) — live Meesho shipping read + low-shipping image generator, on the same Supabase backend as the web app.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:only": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "gen:assets": "node scripts/gen-icons.mjs && node scripts/gen-stickers.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.33",
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^20.19.43",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.0",
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "stickers": [
+    {
+      "id": "best-deal",
+      "label": "Best Deal",
+      "file": "stickers/best-deal.svg"
+    },
+    {
+      "id": "free-shipping",
+      "label": "Free Shipping",
+      "file": "stickers/free-shipping.svg"
+    },
+    {
+      "id": "lowest-price",
+      "label": "Lowest Price",
+      "file": "stickers/lowest-price.svg"
+    },
+    {
+      "id": "special-offer",
+      "label": "Special Offer",
+      "file": "stickers/special-offer.svg"
+    },
+    {
+      "id": "special-sale",
+      "label": "Special Sale",
+      "file": "stickers/special-sale.svg"
+    },
+    {
+      "id": "sale",
+      "label": "Sale",
+      "file": "stickers/sale.svg"
+    },
+    {
+      "id": "clearance",
+      "label": "Clearance",
+      "file": "stickers/clearance.svg"
+    },
+    {
+      "id": "24-hr-offer",
+      "label": "24 Hr Offer",
+      "file": "stickers/24-hr-offer.svg"
+    },
+    {
+      "id": "best-seller",
+      "label": "Best Seller",
+      "file": "stickers/best-seller.svg"
+    },
+    {
+      "id": "best-quality",
+      "label": "Best Quality",
+      "file": "stickers/best-quality.svg"
+    },
+    {
+      "id": "new-arrival",
+      "label": "New Arrival",
+      "file": "stickers/new-arrival.svg"
+    },
+    {
+      "id": "new",
+      "label": "New",
+      "file": "stickers/new.svg"
+    }
+  ]
+}

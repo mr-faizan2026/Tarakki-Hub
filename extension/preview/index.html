@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TarakkiHub panel — design preview</title>
+    <style>
+      body { margin: 0; background: #e9ece7; }
+      .frame {
+        width: 390px;
+        margin: 24px auto;
+        min-height: 90vh;
+        background: var(--canvas, #fbfbf9);
+        border: 1px solid #d5dad4;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px -30px rgba(14,33,49,.4);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame"><div id="root"></div></div>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-zip
+*.local
+.env
+
+# Vite / build
+.vite
+stats.html
+
+# OS
+.DS_Store
+Thumbs.db
