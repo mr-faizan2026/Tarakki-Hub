@@ -26,6 +26,8 @@
 
 # local AI/editor tooling (not part of the product)
 .claude/
+CLAUDE.md
+AGENTS.md
 
 # debug
 npm-debug.log*
