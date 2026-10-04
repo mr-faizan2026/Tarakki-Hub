@@ -25,18 +25,22 @@ const columns: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Company",
     links: [
-      { label: "About", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Contact", href: "#" },
+      // Only ship links that resolve. An "About" that goes to "#" reads as a
+      // half-built site to a seller and as a red flag to a payment reviewer,
+      // who checks that a real business is reachable behind the merchant
+      // account. Add each one back here when the page actually exists.
+      { label: "Contact", href: "/contact" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Privacy", href: "#" },
-      { label: "Terms", href: "#" },
-      { label: "Refund policy", href: "#" },
+      // /privacy is real and must stay real: the Chrome Web Store requires a
+      // reachable privacy-policy URL, and the extension's listing points here.
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms-and-conditions" },
+      { label: "Refund policy", href: "/refund-policy" },
+      { label: "Delivery policy", href: "/shipping-policy" },
     ],
   },
 ];

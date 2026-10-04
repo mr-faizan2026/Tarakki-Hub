@@ -36,8 +36,13 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Run on everything except static assets and image files.
+  // Run on everything except static assets, image files and /api.
+  //
+  // /api is excluded because the only routes under it are /api/extension/*,
+  // which authenticate with a bearer token rather than a cookie. Running the
+  // cookie-refresh above on them would do nothing useful and would add a
+  // Supabase round trip to every heartbeat.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?)$).*)",
   ],
 };

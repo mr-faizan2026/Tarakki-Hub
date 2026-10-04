@@ -65,11 +65,15 @@ export function LoginForm({
       ) : null}
       {submitError ? <FormAlert>{submitError}</FormAlert> : null}
 
+      {/* autoComplete is deliberately off on both fields: the browser was
+          filling the saved credential on load, so the form opened with real
+          values instead of the placeholders. Trade-off: password managers
+          won't fill — or offer to save — this form any more. */}
       <TextField
         id="email"
         label="Email"
         type="email"
-        autoComplete="email"
+        autoComplete="off"
         inputMode="email"
         placeholder="you@example.com"
         value={email}
@@ -80,7 +84,7 @@ export function LoginForm({
       <PasswordField
         id="password"
         label="Password"
-        autoComplete="current-password"
+        autoComplete="new-password"
         placeholder="Your password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}

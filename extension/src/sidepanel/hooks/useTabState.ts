@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  EMPTY_TAB_STATE,
   sendToBackground,
   type BgToPanel,
   type ShippingReading,
   type TabState,
 } from "@/lib/messages";
 
-const INITIAL: TabState = {
-  meeshoTabId: null,
-  contentReady: false,
-  shipping: { value: null, raw: null },
-};
+const INITIAL: TabState = EMPTY_TAB_STATE;
 
 export type TabApi = {
   state: TabState;
@@ -36,7 +33,22 @@ export function useTabState(): TabApi {
 
     const refresh = () => {
       sendToBackground({ type: "GET_STATE" })
-        .then((s) => active && setState(s))
+        .then(async (s) => {
+          if (!active) return;
+          setState(s);
+          // The background caches form status from content-script pushes, and an
+          // MV3 worker that was evicted comes back with an empty cache. A form
+          // that is already on screen sends no new push until it mutates, so ask
+          // the tab directly rather than showing "no form" over a filled one.
+          if (s.meeshoTabId == null || !s.contentReady || s.form.url) return;
+          const res = await sendToBackground({
+            type: "GET_FORM_STATUS",
+            tabId: s.meeshoTabId,
+          }).catch(() => null);
+          if (active && res?.status) {
+            setState((prev) => ({ ...prev, form: res.status }));
+          }
+        })
         .catch(() => {});
     };
 

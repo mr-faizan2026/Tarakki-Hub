@@ -1,21 +1,52 @@
-"use client";
-
-import { useState } from "react";
+import { createClient } from "@/lib/supabase/server";
 import { Container } from "@/components/ui/Container";
 import { Section } from "@/components/ui/Section";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { PricingCard } from "@/components/ui/PricingCard";
 import { Reveal } from "@/components/motion/Reveal";
-import { pricingTiers } from "@/content/pricing";
-import { cn } from "@/lib/cn";
+import { PackCard } from "@/components/billing/PackCard";
+import { STARTER_CREDITS } from "@/lib/config";
+import type { CreditPack } from "@/lib/supabase/types";
 
-/** Flip to true, fill prices in content/pricing.ts, and wire the CTAs to go live. */
-const PRICING_LIVE = false;
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ *  PRICING — credit packs, read from the database
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ *  ── WHY THIS IS NO LONGER A CLIENT COMPONENT ──────────────────────────────
+ *  It used to be one, for a monthly/yearly toggle over a hard-coded tier list.
+ *  The product does not sell subscriptions — it sells one-time credit packs — so
+ *  there is no billing period to toggle, and the only thing left to do was read
+ *  four rows. A server component does that without shipping the list, or a
+ *  second copy of the prices, to the browser. The old scaffolding (content/
+ *  pricing.ts, ui/PricingCard, billing/PlanCard) was deleted rather than left
+ *  behind: a dead price list is one somebody edits and then wonders why the
+ *  page did not change.
+ *
+ *  ── THE PRICES ARE NOT IN THIS FILE, AND THAT IS THE POINT ────────────────
+ *  They are in `credit_packs`, which is also what /api/checkout charges from.
+ *  One row per pack, read by both. A price written in the page and a price
+ *  written in the checkout WILL eventually disagree, and the version the buyer
+ *  sees is the one they will hold you to.
+ *
+ *  ── RENDERS FOR SIGNED-OUT VISITORS ───────────────────────────────────────
+ *  Which is most of this page's traffic. `credit_packs` has a public read policy
+ *  for exactly this; `signedIn` only decides whether the button starts a
+ *  checkout or sends them to sign up first.
+ */
+export async function Pricing() {
+  const supabase = await createClient();
 
-type Billing = "monthly" | "yearly";
+  const [{ data }, { data: auth }] = await Promise.all([
+    supabase
+      .from("credit_packs")
+      .select("*")
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    supabase.auth.getUser(),
+  ]);
 
-export function Pricing() {
-  const [billing, setBilling] = useState<Billing>("monthly");
+  const packs = (data ?? []) as CreditPack[];
+  const signedIn = !!auth?.user;
 
   return (
     <Section id="pricing" tone="canvas" spacing="lg">
@@ -26,68 +57,40 @@ export function Pricing() {
           </Reveal>
           <Reveal delay={0.05}>
             <h2 className="mt-5 font-display text-h2 text-ink-900">
-              Start free. Pay when it pays you back.
+              Pay once. Use the credits when you list.
             </h2>
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mt-4 text-lead text-ink-600">
-              {PRICING_LIVE
-                ? "Simple plans that scale with your shop."
-                : "Full pricing is launching soon. Start free today — early sellers keep founder pricing when paid plans go live."}
+              No subscription and no auto-debit. Buy a pack of credits, spend one
+              only when you use an image that beats your own photo&rsquo;s shipping.
             </p>
-          </Reveal>
-
-          {/* Billing toggle (functional UI; checkout wires up later) */}
-          <Reveal delay={0.12} className="mt-8 flex justify-center">
-            <div
-              className="inline-flex items-center gap-1 rounded-full border border-hairline bg-surface p-1"
-              role="group"
-              aria-label="Billing period"
-            >
-              {(["monthly", "yearly"] as Billing[]).map((b) => (
-                <button
-                  key={b}
-                  type="button"
-                  onClick={() => setBilling(b)}
-                  aria-pressed={billing === b}
-                  className={cn(
-                    "relative rounded-full px-4 py-1.5 text-small font-medium transition-colors",
-                    billing === b
-                      ? "bg-ink-900 text-white"
-                      : "text-ink-500 hover:text-ink-800",
-                  )}
-                >
-                  {b === "monthly" ? "Monthly" : "Yearly"}
-                  {b === "yearly" && (
-                    <span
-                      className={cn(
-                        "ml-1.5 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold",
-                        billing === "yearly"
-                          ? "bg-teal-500 text-white"
-                          : "bg-teal-50 text-teal-700",
-                      )}
-                    >
-                      2 months free
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
           </Reveal>
         </div>
 
-        <Reveal delay={0.08}>
-          <div className="mx-auto mt-14 grid max-w-5xl grid-cols-1 items-start gap-5 md:grid-cols-3">
-            {pricingTiers.map((tier) => (
-              <PricingCard key={tier.id} tier={tier} billing={billing} />
-            ))}
-          </div>
-        </Reveal>
+        {packs.length === 0 ? (
+          /* Only reachable before 0005_billing.sql has been run. Says what is
+             wrong rather than rendering an empty grid that looks like a bug. */
+          <Reveal delay={0.08}>
+            <p className="mx-auto mt-12 max-w-md rounded-lg border border-hairline bg-surface p-5 text-center text-small text-ink-500">
+              Packs aren&rsquo;t set up yet. Run the <code>0005_billing.sql</code>{" "}
+              migration to seed them.
+            </p>
+          </Reveal>
+        ) : (
+          <Reveal delay={0.08}>
+            <div className="mx-auto mt-14 grid max-w-6xl grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {packs.map((pack) => (
+                <PackCard key={pack.id} pack={pack} signedIn={signedIn} />
+              ))}
+            </div>
+          </Reveal>
+        )}
 
         <Reveal delay={0.1}>
           <p className="mx-auto mt-8 max-w-xl text-center text-small text-ink-400">
-            No card needed to start. Cancel anytime. GST invoice on every paid
-            plan. Prices in ₹ for Indian sellers.
+            Start with {STARTER_CREDITS} free credits — no card needed. All prices in
+            ₹ and include GST. Credits are valid for the days shown on each pack.
           </p>
         </Reveal>
       </Container>

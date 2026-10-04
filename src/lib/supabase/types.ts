@@ -44,6 +44,8 @@ export type Database = {
         Row: {
           id: string;
           full_name: string | null;
+          /** 0005 — the 10-digit number Cashfree requires on every order. */
+          phone: string | null;
           role: "user" | "admin";
           plan: string;
           status: "active" | "blocked";
@@ -52,14 +54,22 @@ export type Database = {
         Insert: {
           id: string;
           full_name?: string | null;
+          phone?: string | null;
           role?: "user" | "admin";
           plan?: string;
           status?: "active" | "blocked";
           created_at?: string;
         };
+        /**
+         * 0005 revoked column UPDATE from `authenticated` on everything except
+         * `full_name` and `phone`. The other fields are writable only through
+         * the service role (the admin panel), so a client-side update naming
+         * them will be rejected by the database however this type reads.
+         */
         Update: {
           id?: string;
           full_name?: string | null;
+          phone?: string | null;
           role?: "user" | "admin";
           plan?: string;
           status?: "active" | "blocked";
@@ -106,8 +116,15 @@ export type Database = {
           user_id: string;
           credits_remaining: number;
           images_used: number;
+          /** When the current credit balance lapses. Enforced at spend time. */
           period_start: string;
           period_end: string;
+          /**
+           * 0005 — when paid access ends, null for someone who has never
+           * bought a pack. This is the autofill gate; `period_end` is not,
+           * because free starter credits also carry an expiry.
+           */
+          paid_until: string | null;
         };
         Insert: {
           id?: string;
@@ -116,12 +133,14 @@ export type Database = {
           images_used?: number;
           period_start?: string;
           period_end?: string;
+          paid_until?: string | null;
         };
         Update: {
           credits_remaining?: number;
           images_used?: number;
           period_start?: string;
           period_end?: string;
+          paid_until?: string | null;
         };
         Relationships: [];
       };
@@ -221,6 +240,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      /**
+       * 0005 — what is for sale. The price lives HERE and is read server-side
+       * at checkout; a checkout request names a slug and never an amount.
+       */
+      credit_packs: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          tagline: string | null;
+          credits: number;
+          /** GST-INCLUSIVE rupees — exactly what the buyer is charged. */
+          price_inr: number;
+          validity_days: number;
+          features: Json;
+          featured: boolean;
+          active: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          tagline?: string | null;
+          credits: number;
+          price_inr: number;
+          validity_days: number;
+          features?: Json;
+          featured?: boolean;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          slug?: string;
+          name?: string;
+          tagline?: string | null;
+          credits?: number;
+          price_inr?: number;
+          validity_days?: number;
+          features?: Json;
+          featured?: boolean;
+          active?: boolean;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
       payments: {
         Row: {
           id: string;
@@ -230,8 +297,16 @@ export type Database = {
           plan: string | null;
           status: "pending" | "success" | "failed" | "refunded";
           provider: string | null;
+          /** The Cashfree order id. Unique per provider — see 0005. */
           provider_ref: string | null;
+          /* ── 0005: what was bought, read from credit_packs at checkout ── */
+          pack_slug: string | null;
+          credits_granted: number | null;
+          validity_days: number | null;
+          /** The idempotency latch. Non-null once credits have been added. */
+          granted_at: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -242,7 +317,12 @@ export type Database = {
           status?: "pending" | "success" | "failed" | "refunded";
           provider?: string | null;
           provider_ref?: string | null;
+          pack_slug?: string | null;
+          credits_granted?: number | null;
+          validity_days?: number | null;
+          granted_at?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           amount?: number;
@@ -251,6 +331,11 @@ export type Database = {
           status?: "pending" | "success" | "failed" | "refunded";
           provider?: string | null;
           provider_ref?: string | null;
+          pack_slug?: string | null;
+          credits_granted?: number | null;
+          validity_days?: number | null;
+          granted_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -284,6 +369,70 @@ export type Database = {
         };
         Relationships: [];
       };
+      /* ── 0004_extension.sql — the Chrome extension control plane ──────── */
+      /**
+       * One row per extension install. `device_id` is a random UUID the
+       * extension generates on first install; it identifies an install, not a
+       * machine. Written only by the service role, through the SQL functions.
+       */
+      extension_devices: {
+        Row: {
+          id: string;
+          user_id: string;
+          device_id: string;
+          label: string | null;
+          ext_version: string | null;
+          status: "active" | "revoked";
+          last_seen_at: string;
+          revoked_at: string | null;
+          created_at: string;
+        };
+        Insert: { user_id: string; device_id: string };
+        Update: { status?: "active" | "revoked" };
+        Relationships: [];
+      };
+      /**
+       * Adapter health checks. Holds a feature name, a check key, a status, the
+       * extension version, the device id and an id-stripped URL path — nothing
+       * else, ever. See the comment block in 0004_extension.sql.
+       */
+      extension_events: {
+        Row: {
+          id: number;
+          user_id: string | null;
+          device_id: string | null;
+          ext_version: string | null;
+          feature: string;
+          check_key: string;
+          status: "ok" | "not_found" | "error";
+          path: string | null;
+          detail: string | null;
+          created_at: string;
+        };
+        Insert: { feature: string; check_key: string; status: string };
+        Update: { detail?: string | null };
+        Relationships: [];
+      };
+      /** Idempotency ledger for credit spends — one row per final export. */
+      credit_claims: {
+        Row: {
+          idempotency_key: string;
+          user_id: string;
+          device_id: string | null;
+          action: string;
+          amount: number;
+          usage_snapshot: Json;
+          created_at: string;
+        };
+        Insert: {
+          idempotency_key: string;
+          user_id: string;
+          action: string;
+          amount: number;
+        };
+        Update: { usage_snapshot?: Json };
+        Relationships: [];
+      };
     };
     Views: {
       admin_users: {
@@ -315,6 +464,67 @@ export type Database = {
         Args: Record<string, never>;
         Returns: number;
       };
+      /* ── 0005_billing.sql ─────────────────────────────────────────────────
+       * grant_credit_pack is SERVICE-ROLE ONLY: it is the only thing that adds
+       * paid credits, and it takes a payment id rather than an amount so a
+       * caller cannot invent one. EXECUTE is revoked from public. */
+      grant_credit_pack: {
+        Args: { p_payment_id: string };
+        Returns: Database["public"]["Tables"]["usage"]["Row"];
+      };
+      expire_credits_if_due: {
+        Args: { p_user: string };
+        Returns: Database["public"]["Tables"]["usage"]["Row"];
+      };
+      /* ── 0004_extension.sql ───────────────────────────────────────────────
+       * Called by /api/extension/* with the SERVICE ROLE only: each one takes
+       * the user id explicitly, so the route's JWT check is what ties a call to
+       * a person. EXECUTE is revoked from public, so no client can reach them. */
+      extension_device_limit: {
+        Args: { p_user: string };
+        Returns: number;
+      };
+      extension_device_list: {
+        Args: { p_user: string };
+        Returns: Json;
+      };
+      register_extension_device: {
+        Args: {
+          p_user: string;
+          p_device_id: string;
+          p_label?: string | null;
+          p_version?: string | null;
+        };
+        Returns: Json;
+      };
+      revoke_extension_device: {
+        Args: { p_user: string; p_device_id: string };
+        Returns: Json;
+      };
+      extension_heartbeat: {
+        Args: { p_user: string; p_device_id: string; p_version?: string | null };
+        Returns: Json;
+      };
+      /** consume_credit, keyed to a device AND an idempotency key. */
+      consume_credit_for: {
+        Args: {
+          p_user: string;
+          p_device_id: string;
+          p_idempotency_key: string;
+          p_action?: string;
+          p_amount?: number;
+        };
+        Returns: Database["public"]["Tables"]["usage"]["Row"];
+      };
+      record_extension_events: {
+        Args: {
+          p_user: string;
+          p_device_id: string | null;
+          p_version: string | null;
+          p_events: Json;
+        };
+        Returns: number;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -329,5 +539,6 @@ export type CreditEvent = Database["public"]["Tables"]["credit_events"]["Row"];
 export type Plan = Database["public"]["Tables"]["plans"]["Row"];
 export type Subscription = Database["public"]["Tables"]["subscriptions"]["Row"];
 export type Payment = Database["public"]["Tables"]["payments"]["Row"];
+export type CreditPack = Database["public"]["Tables"]["credit_packs"]["Row"];
 export type AdminAction = Database["public"]["Tables"]["admin_actions"]["Row"];
 export type AdminUserRow = Database["public"]["Views"]["admin_users"]["Row"];

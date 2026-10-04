@@ -1,0 +1,51 @@
+<!doctype html>
+<!--
+  RECONSTRUCTION of the Meesho price-breakdown panel — see README.md.
+  The figures are dummy. What matters structurally is that the shipping label and
+  its rupee amount sit in SIBLING cells of a row, not in the same element: that is
+  the case the ancestor climb in shipping.ts exists for, and the case a fixed CSS
+  path would have been written against and then broken on.
+
+  Two decoys are deliberately present:
+    • "Free shipping above ₹499" — a ₹ amount next to the word shipping that is
+      NOT the charge. SHIPPING_NEGATIVE must reject it.
+    • "Shipping address" in the page chrome — same trap, different wording.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Price breakdown</title>
+  </head>
+  <body>
+    <header class="css-hdr">
+      <span>Shipping address: Dummy address</span>
+      <span>Free shipping above ₹499</span>
+    </header>
+
+    <main>
+      <h2>Price breakdown</h2>
+      <div class="css-brk">
+        <div class="css-row">
+          <span class="css-lbl">Meesho price</span>
+          <span class="css-val">₹0</span>
+        </div>
+        <div class="css-row">
+          <span class="css-lbl">Commission</span>
+          <span class="css-val">₹0</span>
+        </div>
+        <div class="css-row">
+          <span class="css-lbl">Shipping (added separately)</span>
+          <span class="css-val">₹61</span>
+        </div>
+        <div class="css-row">
+          <span class="css-lbl">GST</span>
+          <span class="css-val">₹0</span>
+        </div>
+        <div class="css-row css-total">
+          <span class="css-lbl">You receive</span>
+          <span class="css-val">₹0</span>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

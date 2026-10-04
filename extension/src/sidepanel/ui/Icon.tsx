@@ -18,7 +18,16 @@ export type IconName =
   | "arrowRight"
   | "alert"
   | "sticker"
-  | "sliders";
+  | "sliders"
+  | "plus"
+  | "copy"
+  | "trash"
+  | "pencil"
+  | "close"
+  | "chevron"
+  | "search"
+  | "crosshair"
+  | "info";
 
 const paths: Record<IconName, React.ReactElement> = {
   rupee: (
@@ -107,6 +116,47 @@ const paths: Record<IconName, React.ReactElement> = {
       <path d="M4 8h10M18 8h2M4 16h2M10 16h10" strokeLinecap="round" />
       <circle cx="16" cy="8" r="2.2" />
       <circle cx="8" cy="16" r="2.2" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" strokeLinecap="round" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" strokeLinecap="round" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4.5 7h15M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7" strokeLinecap="round" />
+      <path d="M6.5 7l.8 11.2A2 2 0 0 0 9.3 20h5.4a2 2 0 0 0 2-1.8L17.5 7" strokeLinecap="round" />
+      <path d="M10.5 11v5M13.5 11v5" strokeLinecap="round" />
+    </>
+  ),
+  pencil: (
+    <>
+      <path d="M4.5 19.5h4L20 8a2.1 2.1 0 0 0-3-3L5.5 16.5z" strokeLinejoin="round" />
+      <path d="M14.5 5.5 18.5 9.5" strokeLinecap="round" />
+    </>
+  ),
+  close: <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />,
+  chevron: <path d="m8 10 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4 4" strokeLinecap="round" />
+    </>
+  ),
+  crosshair: (
+    <>
+      <circle cx="12" cy="12" r="7.5" />
+      <path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4" strokeLinecap="round" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11.2v5" strokeLinecap="round" />
+      <path d="M12 7.7h.01" strokeLinecap="round" strokeWidth="2.3" />
     </>
   ),
 };

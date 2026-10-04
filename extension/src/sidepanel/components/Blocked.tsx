@@ -15,8 +15,8 @@ export function Blocked({ onSignOut }: { onSignOut: () => void }) {
         </div>
         <h2 style={{ marginTop: 10, fontSize: 18 }}>Account paused</h2>
         <p className="hint" style={{ marginTop: 6 }}>
-          This account is currently blocked, so the tools are unavailable. If you
-          think this is a mistake, please reach out from the web dashboard.
+          This account is blocked. If that&rsquo;s a mistake, reach out from the
+          dashboard.
         </p>
         <div className="stack" style={{ marginTop: 14 }}>
           <a

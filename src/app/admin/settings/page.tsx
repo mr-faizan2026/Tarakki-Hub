@@ -5,6 +5,7 @@ import { Card, PageHeader } from "@/components/dashboard/Card";
 import { StarterCreditsForm } from "@/components/admin/StarterCreditsForm";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { PAYMENTS } from "@/lib/config";
+import { cashfreeConfig } from "@/lib/cashfree";
 import { formatDateTime } from "@/lib/format";
 import type { AdminAction, AdminUserRow } from "@/lib/supabase/types";
 
@@ -50,6 +51,27 @@ function describe(
       return { icon: "layers", text: "Disabled a plan" };
     case "settings.starter_credits":
       return { icon: "gear", text: `Set starter credits to ${str(d.value)}` };
+    case "extension.adapter_config":
+      return {
+        icon: "sliders",
+        text: `Published Meesho adapter config version ${str(d.version)}`,
+      };
+    case "extension.kill_switches": {
+      const off = Array.isArray(d.disabled) ? (d.disabled as unknown[]).map(str) : [];
+      return {
+        icon: "ban",
+        text: off.length
+          ? `Paused extension features: ${off.join(", ")}`
+          : "Re-enabled every extension feature",
+      };
+    }
+    case "extension.versions":
+      return {
+        icon: "shield",
+        text: `Set extension versions (min ${str(d.min_version)}, latest ${str(
+          d.latest_version,
+        )}) and ${str(d.device_limit)} devices per account`,
+      };
     default:
       return { icon: "sliders", text: row.action };
   }
@@ -69,6 +91,9 @@ export default async function AdminSettingsPage() {
   ]);
 
   const log = (logRows ?? []) as AdminAction[];
+
+  // Null when the Cashfree credentials are not set on this deployment.
+  const gateway = cashfreeConfig();
 
   // Resolve target user names for the log.
   const targetIds = [...new Set(log.map((r) => r.target_user_id).filter(Boolean))] as string[];
@@ -119,15 +144,27 @@ export default async function AdminSettingsPage() {
               <dt className="text-ink-500">Payment gateway</dt>
               <dd className="font-medium capitalize text-ink-800">{PAYMENTS.provider}</dd>
             </div>
+            {/* Read from the live credentials rather than a build-time flag, so
+                this cannot claim "Live" on a deployment whose keys were never
+                added. It also distinguishes sandbox from production, which is
+                the thing an admin most needs to be sure of. */}
             <div className="flex items-center justify-between">
               <dt className="text-ink-500">Checkout</dt>
               <dd className="flex items-center gap-1.5 font-medium text-ink-800">
                 <span
                   className={`h-2 w-2 rounded-full ${
-                    PAYMENTS.enabled ? "bg-teal-500" : "bg-amber-500"
+                    gateway?.mode === "production"
+                      ? "bg-teal-500"
+                      : gateway
+                        ? "bg-amber-500"
+                        : "bg-ink-300"
                   }`}
                 />
-                {PAYMENTS.enabled ? "Live" : "Not connected"}
+                {gateway
+                  ? gateway.mode === "production"
+                    ? "Live"
+                    : "Sandbox (test payments)"
+                  : "Not connected"}
               </dd>
             </div>
             <div className="flex items-center justify-between">

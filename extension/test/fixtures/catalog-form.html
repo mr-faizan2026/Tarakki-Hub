@@ -1,0 +1,233 @@
+<!doctype html>
+<!--
+  RECONSTRUCTION of the Meesho "Add Single Catalog" form — see README.md.
+  Every value is dummy text. Structure follows what src/content/meesho/config.ts
+  documents about the live form:
+    • two sections, "Product, Size and Inventory" and "Product Details", with the
+      SECOND holding most of the controls (the 0.9 coverage rule exists for this);
+    • Meesho dropdowns are <input readonly placeholder="Select"> with NO aria at
+      all — no role, no aria-expanded, no aria-haspopup;
+    • the Size list is a ul[role="menu"] whose rows are bare <div><svg/><p>M</p></div>
+      with no role and no <li>, which is why OPTION_SELECTOR needs its fallback;
+    • required labels carry a rendered asterisk, not a `required` attribute;
+    • "Name" appears three times, under Manufacturer, Packer and Importer.
+  Class names are generated-looking on purpose: nothing may anchor on them.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Add Single Catalog</title>
+  </head>
+  <body>
+    <header class="css-1hdr">
+      <a href="/panel/v3/new/dashboard">Dashboard</a>
+      <div role="search">
+        <input type="text" placeholder="Search catalogs" aria-label="Search catalogs" />
+      </div>
+      <div role="menu" aria-label="Account">
+        <button type="button">Dummy Shop</button>
+      </div>
+    </header>
+
+    <nav aria-label="breadcrumb" class="css-2bc">
+      <span>Home</span>
+      <span>›</span>
+      <span>Women Western</span>
+      <span>›</span>
+      <span>Kurtis</span>
+    </nav>
+
+    <main class="css-9f21">
+      <h1>Add Single Catalog</h1>
+
+      <form class="css-form-a">
+        <section class="css-sec-1">
+          <h2>Product, Size and Inventory</h2>
+
+          <div class="css-fld">
+            <label for="pname">Product Name *</label>
+            <input id="pname" name="product_name" type="text" value="Dummy product name" />
+          </div>
+
+          <div class="css-fld">
+            <label for="sizes">Size *</label>
+            <!-- Meesho multi-size picker: readonly trigger, no aria. -->
+            <input
+              id="sizes"
+              name="sizes"
+              type="text"
+              readonly
+              placeholder="Select"
+              value="M"
+            />
+            <ul role="menu" class="css-menu" style="display: none">
+              <div><svg viewBox="0 0 10 10"></svg><p>XS</p></div>
+              <div><svg viewBox="0 0 10 10"></svg><p>S</p></div>
+              <div><svg viewBox="0 0 10 10"></svg><p>M</p></div>
+              <div><svg viewBox="0 0 10 10"></svg><p>L</p></div>
+              <div><svg viewBox="0 0 10 10"></svg><p>XL</p></div>
+              <button type="button">Apply</button>
+            </ul>
+          </div>
+
+          <div class="css-fld">
+            <label for="mrp">MRP *</label>
+            <input id="mrp" name="mrp" type="number" value="0" />
+          </div>
+
+          <div class="css-fld">
+            <label for="price">Meesho Price *</label>
+            <input id="price" name="price" type="number" value="0" />
+          </div>
+
+          <div class="css-fld">
+            <label for="inventory">Inventory *</label>
+            <input id="inventory" name="inventory" type="number" value="0" />
+          </div>
+
+          <div class="css-fld">
+            <label for="sku">SKU ID</label>
+            <input id="sku" name="sku" type="text" value="DUMMY-SKU" />
+          </div>
+        </section>
+
+        <section class="css-sec-2">
+          <h2>Product Details</h2>
+
+          <div class="css-fld">
+            <label for="fabric">Fabric *</label>
+            <input
+              id="fabric"
+              name="fabric"
+              type="text"
+              readonly
+              placeholder="Select"
+              value="Cotton Blend"
+            />
+          </div>
+
+          <div class="css-fld">
+            <label for="colour">Colour *</label>
+            <input
+              id="colour"
+              name="colour"
+              type="text"
+              readonly
+              placeholder="Select"
+              value="Dummy Colour"
+            />
+          </div>
+
+          <div class="css-fld">
+            <label for="neck">Neck</label>
+            <input id="neck" name="neck" type="text" readonly placeholder="Select" value="" />
+          </div>
+
+          <div class="css-fld">
+            <label for="sleeve">Sleeve Length</label>
+            <input
+              id="sleeve"
+              name="sleeve_length"
+              type="text"
+              readonly
+              placeholder="Select"
+              value="Short Sleeves"
+            />
+          </div>
+
+          <div class="css-fld">
+            <label for="pattern">Pattern</label>
+            <select id="pattern" name="pattern">
+              <option value="">Select</option>
+              <option value="printed" selected>Printed</option>
+              <option value="solid">Solid</option>
+            </select>
+          </div>
+
+          <div class="css-fld">
+            <label for="hsn">HSN Code *</label>
+            <input id="hsn" name="hsn" type="text" value="000000" />
+          </div>
+
+          <div class="css-fld">
+            <label for="country">Country of Origin *</label>
+            <input
+              id="country"
+              name="country_of_origin"
+              type="text"
+              readonly
+              placeholder="Select"
+              value="India"
+            />
+          </div>
+
+          <div class="css-fld">
+            <label for="netqty">Net Quantity *</label>
+            <input id="netqty" name="net_quantity" type="text" value="1" />
+          </div>
+
+          <div class="css-fld">
+            <label for="netweight">Net Weight (GM) *</label>
+            <input id="netweight" name="net_weight" type="number" value="0" />
+          </div>
+
+          <div class="css-fld">
+            <label for="desc">Product Description</label>
+            <textarea id="desc" name="description">Dummy description text.</textarea>
+          </div>
+
+          <fieldset class="css-blk">
+            <legend>Manufacturer Details</legend>
+            <div class="css-fld">
+              <label for="mfg-name">Name *</label>
+              <input id="mfg-name" name="manufacturer_name" type="text" value="Dummy Name" />
+            </div>
+            <div class="css-fld">
+              <label for="mfg-addr">Address *</label>
+              <input
+                id="mfg-addr"
+                name="manufacturer_address"
+                type="text"
+                value="Dummy address"
+              />
+            </div>
+          </fieldset>
+
+          <fieldset class="css-blk">
+            <legend>Packer Details</legend>
+            <div class="css-fld">
+              <label for="pkr-name">Name *</label>
+              <input id="pkr-name" name="packer_name" type="text" value="Dummy Name" />
+            </div>
+            <div class="css-fld">
+              <label for="pkr-addr">Address *</label>
+              <input id="pkr-addr" name="packer_address" type="text" value="Dummy address" />
+            </div>
+          </fieldset>
+
+          <fieldset class="css-blk">
+            <legend>Importer Details</legend>
+            <div class="css-fld">
+              <label for="imp-name">Name</label>
+              <input id="imp-name" name="importer_name" type="text" value="" />
+            </div>
+            <div class="css-fld">
+              <label for="imp-addr">Address</label>
+              <input id="imp-addr" name="importer_address" type="text" value="" />
+            </div>
+          </fieldset>
+
+          <div class="css-fld">
+            <label for="front-image">Front Image</label>
+            <!-- Never captured or filled: images are Part 1's job. -->
+            <input id="changeFrontImage" type="file" accept="image/png,image/jpeg" />
+          </div>
+        </section>
+      </form>
+    </main>
+
+    <footer class="css-ftr">
+      <span>Dummy Shop · support</span>
+    </footer>
+  </body>
+</html>

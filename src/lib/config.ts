@@ -13,11 +13,36 @@ export const STARTER_CREDITS = 3;
 
 /**
  * ── Payment gateway ─────────────────────────────────────────────────────────
- * Billing will run through Cashfree. Checkout is not wired yet — this flag lets
- * the UI show a "launching soon" state and marks the single integration point
- * that the Cashfree order/session flow will plug into later.
+ * Billing runs through Cashfree, selling one-time CREDIT PACKS — see
+ * supabase/migrations/0005_billing.sql and src/lib/cashfree.ts.
+ *
+ * There is no build-time "enabled" flag any more, and deliberately so: whether
+ * checkout works is decided at request time by whether CASHFREE_APP_ID and
+ * CASHFREE_SECRET_KEY are set (cashfreeConfig() returns null when they are
+ * not). A constant here could say "enabled" on a deployment whose keys were
+ * never added, which is the one lie this surface must not tell.
  */
 export const PAYMENTS = {
   provider: "cashfree" as const,
-  enabled: false,
 } as const;
+
+/**
+ * ── The app's own public origin ─────────────────────────────────────────────
+ * Cashfree needs two absolute URLs on every order: where to send the buyer back
+ * (`return_url`) and where to POST the result (`notify_url`). Neither can be a
+ * relative path, and `notify_url` has to be reachable from Cashfree's servers —
+ * so on localhost the webhook simply never arrives, which is why the billing
+ * page also polls the order status.
+ *
+ * `NEXT_PUBLIC_SITE_URL` wins when set. On Vercel we fall back to the
+ * deployment's own host, and finally to localhost for `next dev`.
+ */
+export function siteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return explicit.replace(/\/+$/, "");
+
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  if (vercel) return `https://${vercel.replace(/\/+$/, "")}`;
+
+  return "http://localhost:3000";
+}

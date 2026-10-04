@@ -1,42 +1,99 @@
 /**
  * ════════════════════════════════════════════════════════════════════════════
  *  MEESHO API — the single place that knows Meesho's internal supplier-panel
- *  endpoints. (meesho-adapter.ts is the single place that knows its DOM.)
+ *  endpoints. (The meesho/ folder beside this one is the only code that knows
+ *  Meesho's DOM; its config.ts holds every selector.)
  * ════════════════════════════════════════════════════════════════════════════
  *
  *  Runs in the content script on supplier.meesho.com, so every request is a
  *  same-origin call carrying the seller's own logged-in session cookies — the
  *  exact calls the panel makes itself when a seller adds a catalog image.
  *
- *  How Meesho prices an image (verified live on the Add Single Catalog flow):
+ *  How Meesho prices an image:
  *    1. UPLOAD   the image                    → a hosted image URL
  *    2. MATCH    the URL against its catalog  → a "duplicate pid" (the existing
  *                                               product Meesho thinks it looks
- *                                               like). THIS is why the image
- *                                               changes the shipping charge.
- *    3. PRICE    category + duplicate pid     → `shipping_charges`, the exact
+ *                                               like)
+ *    3. PRICE    the listing                  → `shipping_charges`, the exact
  *                                               "Shipping (added separately)"
  *                                               figure the panel shows.
  *
- *  Nothing here is estimated or hardcoded: every ₹ comes back from Meesho for
- *  that exact image. If a step fails we report the failure — never a guess.
+ *  ── THE RULE THIS FILE EXISTS TO ENFORCE ───────────────────────────────────
+ *  WE MIRROR. We do not model. The body we post is always the panel's OWN
+ *  captured body, to its own URL, with its own fields. What varies is the ONE
+ *  field the image legitimately controls, and whether we touch it at all:
+ *
+ *    mode "mirror" — the panel's body, posted back completely untouched. No
+ *                    upload, no match call. This answers one question only:
+ *                    does our request reproduce the figure the panel is
+ *                    displaying? If it doesn't, we are talking to Meesho about
+ *                    a different listing and the whole run is void.
+ *    mode "match"  — the panel's body with `duplicate_pid` set to the catalog
+ *                    product Meesho matched THIS image to. Nothing else moves.
+ *
+ *  This is not caution for its own sake. An earlier version of this file
+ *  modelled Meesho's pricing from measurements ("the charge follows duplicate_pid
+ *  and gst_type, price is irrelevant") and filled the gaps with constants: a
+ *  ₹300 price, 5% GST, and `is_old_image_match_enabled: true` in the match step.
+ *  Every one of those is a question the seller never asked. The result was a
+ *  real Meesho response to a fabricated listing: ₹288 shown in our side panel
+ *  while the seller's own panel, on the same photo, displayed ₹110 — and
+ *  "savings" of ₹149 that were in fact ₹39 WORSE than doing nothing.
+ *
+ *  Note what was actually wrong there, because the first fix over-corrected.
+ *  It was NOT that `duplicate_pid` changes the charge — it does, and that is
+ *  the entire mechanism this feature sells: Meesho inherits the matched
+ *  product's shipping, so a different front photo really does get a different
+ *  charge. The bug was (a) an invented match flag that widened matching until
+ *  every photo matched something heavy, and (b) comparing pid-priced variants
+ *  against a pid-less baseline — two different questions, subtracted.
+ *
+ *  The over-correction was to refuse to set `duplicate_pid` unless the panel's
+ *  own captured body already carried one. The panel sends `duplicate_pid: null`
+ *  whenever it re-prices without re-matching, which is most of the time, so the
+ *  feature spent its life telling sellers "no image can change this figure" on
+ *  listings where competing tools were demonstrably moving it by ₹10–₹20. A
+ *  refusal that is wrong is still wrong.
+ *
+ *  So the guarantee is now the one that actually holds: no filler price, no
+ *  filler GST, no invented match flags, and EVERY ranked figure in a run —
+ *  the seller's own photo included — priced the same way, in "match" mode, so
+ *  a difference between two of them is a difference Meesho made. With no
+ *  captured panel request there is still no quote at all (`no_panel_capture`).
+ *  Whatever we cannot mirror, we do not answer.
+ *
+ *  Every quote also carries `debug`: the mode, the body we sent and the panel's
+ *  own figure, so the side panel can refuse to display anything from a run
+ *  whose mirror quote failed to reproduce the panel's (calibration gate).
  *
  *  ── WHERE TO UPDATE IF MEESHO CHANGES ──────────────────────────────────────
- *    • ENDPOINTS                 — the paths below.
+ *    • ENDPOINTS                 — only the upload path is ours to know; the
+ *                                  match and pricing URLs come from the panel.
  *    • CLIENT_TYPE / session()   — the headers the panel's own client sends.
  *    • the response field names read in quoteImage().
+ *  Request BODIES are mirrored, so new Meesho fields need no change here.
  */
 
-import type { LiveQuote, MeeshoCategory, MeeshoErrorCode } from "@/lib/messages";
+import type { LiveQuote, MeeshoCategory, MeeshoErrorCode, QuoteMode } from "@/lib/messages";
+import {
+  matchTemplate,
+  panelMatchedPid,
+  pricingSignature,
+  pricingTemplate,
+  probeInstalled,
+} from "./panel-context";
 
 /* ─── tunables ─────────────────────────────────────────────────────────── */
 
+/**
+ * Fallback paths. The match and pricing URLs are normally taken from the panel's
+ * own captured call; these are only used when the capture recorded no URL.
+ */
 const ENDPOINTS = {
   upload: "/api/cataloging/singleCatalogUpload/uploadSingleCatalogImages",
   match: "/api/cataloging/priceRecommendation/fetchDuplicatePid",
   price: "/api/cataloging/singleCatalogUpload/getTransferPrice",
   searchCategories: "/api/cataloging/catalog-upload/search-catalog",
-  supplier: "/api/container/supplier/prefetch-supply-data",
 } as const;
 
 /** The desktop panel identifies itself with this; Meesho rejects calls without it. */
@@ -48,22 +105,12 @@ const SUPPLIER_ID_COOKIE = "s_id";
 /** The supplier handle is a path segment: /panel/v3/new/<module>/<identifier>/… */
 const IDENTIFIER_RE = /^\/panel\/v3\/new\/[^/]+\/([^/]+)\//;
 
-/**
- * getTransferPrice requires a selling price, but its `shipping_charges` does not
- * depend on it (checked at ₹150 / ₹300 / ₹800 → identical shipping). This is a
- * request parameter for the tax breakdown, NOT a shipping price.
- */
-const QUOTE_SELLING_PRICE = 300;
-
-/**
- * Some GST registrations return an empty breakdown unless a GST rate is sent.
- * The rate changes tax lines, not shipping, so any valid slab works for the retry.
- */
-const RETRY_GST_PERCENT = 5;
-
 /* ─── types ────────────────────────────────────────────────────────────── */
 
 export type MeeshoSession = { identifier: string; supplierId: string };
+
+/** The seller's own price, when they typed it into our panel. */
+export type ManualPricing = { price: number; gstPercent: number | null };
 
 export class MeeshoApiError extends Error {
   code: MeeshoErrorCode;
@@ -141,25 +188,6 @@ async function post<T>(
   }
 }
 
-/* ─── supplier (GST registration) ──────────────────────────────────────── */
-
-let gstTypeCache: { supplierId: string; gstType: string | null } | null = null;
-
-/**
- * The seller's GST registration type (e.g. "ENROLMENT", "GSTIN"). Meesho's
- * shipping line differs by registration, so we price with the seller's own.
- */
-async function sellerGstType(session: MeeshoSession): Promise<string | null> {
-  if (gstTypeCache?.supplierId === session.supplierId) return gstTypeCache.gstType;
-  const res = await post<{ supplier?: { gst_type?: string } }>(session, ENDPOINTS.supplier, {
-    supplier_id: Number(session.supplierId),
-    identifier: session.identifier,
-  });
-  const gstType = res.supplier?.gst_type ?? null;
-  gstTypeCache = { supplierId: session.supplierId, gstType };
-  return gstType;
-}
-
 /* ─── category search ──────────────────────────────────────────────────── */
 
 /** Meesho's own category search (the one behind "Add Single Catalog"). */
@@ -183,60 +211,162 @@ export async function searchCategories(query: string): Promise<MeeshoCategory[]>
 
 /* ─── the live quote: upload → match → price ───────────────────────────── */
 
+const numberOrNull = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
 type TransferPrice = { shipping_charges?: number };
 
 /**
- * Ask Meesho what it would charge to ship a product listed with `image` as its
- * front photo in category `sscatId`. Uploads the image to the seller's panel
- * storage (as the panel does on every image pick) but never creates, saves or
- * submits a catalog.
+ * The panel's captured pricing request, or a refusal. There is no third option:
+ * quoting without one means quoting a listing the seller isn't making.
+ */
+function requireTemplate() {
+  const template = pricingTemplate();
+  if (template) return template;
+  throw new MeeshoApiError(
+    "no_panel_capture",
+    probeInstalled()
+      ? "Your supplier panel hasn't priced this listing yet. Enter your selling price in the panel so its price breakdown appears, then try again."
+      : "Reload your supplier panel tab so TarakkiHub can read its own pricing — we only ever show the figure your panel shows.",
+  );
+}
+
+/**
+ * Ask Meesho what it would charge to ship the seller's listing with `image` as
+ * its front photo. Uploads the image to the seller's panel storage (as the panel
+ * does on every image pick) but never creates, saves or submits a catalog.
+ *
+ * `fallbackSscatId` is the category picked in our side panel. It is used ONLY
+ * when the panel's own captured request doesn't name one — the listing's real
+ * category always wins over anything picked here.
+ *
+ * `expectSignature` pins the whole run to one captured request. The seller can
+ * retype their price in the panel while we're quoting, which replaces the
+ * capture underneath us; mixing figures from before and after would produce a
+ * ranking of images that were never compared on equal terms.
+ *
+ * `mode` picks the question (see QuoteMode). "mirror" ignores `image` entirely
+ * and may be passed null for it: that quote exists to reproduce the panel's own
+ * figure, and an upload would only add traffic to the seller's account without
+ * changing a single field of the body.
  */
 export async function quoteImage(
-  image: Blob,
+  image: Blob | null,
   fileName: string,
-  sscatId: number,
+  fallbackSscatId: number,
+  manual: ManualPricing | null,
+  expectSignature: string | null = null,
+  mode: QuoteMode = "match",
 ): Promise<LiveQuote> {
   const session = requireSession();
+  const template = requireTemplate();
+  if (expectSignature != null && pricingSignature() !== expectSignature) {
+    throw new MeeshoApiError(
+      "panel_changed",
+      "Your supplier panel re-priced this listing while we were checking. Press Generate again so every image is compared against the same listing.",
+    );
+  }
+  const match = matchTemplate();
 
-  // 1) Upload.
-  const form = new FormData();
-  form.append("file", new File([image], fileName, { type: image.type || "image/jpeg" }));
-  form.append("data", "undefined"); // the panel's client sends this literal too
-  const uploaded = await post<{ image?: string }>(session, ENDPOINTS.upload, form);
-  const imageUrl = uploaded.image;
-  if (!imageUrl) throw new MeeshoApiError("bad_response", "Meesho didn't accept the image.");
+  // The listing's own category, straight from the panel. Falling back to the
+  // picker is a last resort, and the quote says which was used.
+  const sscatId =
+    numberOrNull(template.body.sscat_id) ??
+    (match ? numberOrNull(match.body.sscat_id) : null) ??
+    fallbackSscatId;
 
-  // 2) Match — which existing product does Meesho think this looks like?
-  const matched = await post<{
-    data?: { duplicate_pid?: number; wu_shipping_charge?: number } | null;
-  }>(session, ENDPOINTS.match, {
-    is_old_image_match_enabled: true,
-    sscat_id: sscatId,
-    image_url: imageUrl,
-  });
-  const duplicatePid = matched.data?.duplicate_pid ?? null;
-  const matchShipping = matched.data?.wu_shipping_charge;
+  let imageUrl: string | null = null;
+  let duplicatePid: number | null = null;
+  let matchBody: Record<string, unknown> | null = null;
 
-  // 3) Price — the panel's own "Shipping (added separately)" line.
-  const gstType = await sellerGstType(session).catch(() => null);
-  const priceBody = (gstPercent: number | null) => ({
-    sscat_id: sscatId,
-    gst_percentage: gstPercent,
-    price: QUOTE_SELLING_PRICE,
-    supplier_id: Number(session.supplierId),
-    ...(duplicatePid != null ? { duplicate_pid: duplicatePid } : {}),
-    gst_type: gstType,
-  });
-  let priced = await post<TransferPrice>(session, ENDPOINTS.price, priceBody(null));
+  if (mode === "match") {
+    if (!image) {
+      throw new MeeshoApiError("bad_response", "No image to price.");
+    }
+
+    // 1) Upload.
+    const form = new FormData();
+    form.append("file", new File([image], fileName, { type: image.type || "image/jpeg" }));
+    form.append("data", "undefined"); // the panel's client sends this literal too
+    const uploaded = await post<{ image?: string }>(session, ENDPOINTS.upload, form);
+    imageUrl = uploaded.image ?? null;
+    if (!imageUrl) throw new MeeshoApiError("bad_response", "Meesho didn't accept the image.");
+
+    // 2) Match — which existing product does Meesho think this looks like?
+    //    The panel's own match request, with only the image swapped. No flags of
+    //    our own: `is_old_image_match_enabled: true` was once invented here, and
+    //    it widened matching until every photo matched something heavy.
+    matchBody = { ...(match?.body ?? {}), sscat_id: sscatId, image_url: imageUrl };
+    const matched = await post<{
+      data?: { duplicate_pid?: number; wu_shipping_charge?: number } | null;
+    }>(session, match?.url ?? ENDPOINTS.match, matchBody);
+    duplicatePid = matched.data?.duplicate_pid ?? null;
+  }
+
+  // 3) Price — the panel's own request, with at most one field changed.
+  const body: Record<string, unknown> = { ...template.body };
+  if (mode === "match") {
+    // The matched product is the one thing an image legitimately controls, and
+    // it is the one thing we touch. `duplicate_pid` is set for every image in
+    // the run, the seller's own photo included, so two figures differ only
+    // where Meesho made them differ.
+    //
+    // Deleting the key when nothing matched is deliberate and is NOT the same
+    // as sending null: it leaves the body exactly as a panel that never matched
+    // would have sent it, rather than asserting "matched: nothing".
+    if (duplicatePid != null) body.duplicate_pid = duplicatePid;
+    else delete body.duplicate_pid;
+  }
+  // In "mirror" mode the panel's own `duplicate_pid` — number, null or absent —
+  // rides along untouched, because that mode's entire job is to reproduce the
+  // panel's figure. A mirror quote that sets this field proves nothing.
+
+  // The seller's typed price is honoured, and NOT in mirror mode. The panel
+  // priced at the panel's price, so a mirror quote at a different price gets a
+  // different figure and calibration reads it as a mismatch — which would stop
+  // every run by a seller sanity-checking a price they haven't typed into
+  // Meesho yet, for a disagreement we manufactured ourselves.
+  if (manual && mode === "match") {
+    body.price = manual.price;
+    if (manual.gstPercent != null) body.gst_percentage = manual.gstPercent;
+  }
+
+  const priced = await post<TransferPrice>(session, template.url ?? ENDPOINTS.price, body);
   if (typeof priced.shipping_charges !== "number") {
-    priced = await post<TransferPrice>(session, ENDPOINTS.price, priceBody(RETRY_GST_PERCENT));
+    // NOT a place for a fallback. The match step's `wu_shipping_charge` is
+    // consistently ₹10 above `shipping_charges` — it is the GSTIN figure, while
+    // the panel's "Shipping (added separately)" line renders shipping_charges.
+    // Showing it would overstate every image, so we report the failure instead.
+    throw new MeeshoApiError(
+      "bad_response",
+      "Meesho didn't return a shipping charge for this image. Try again in a moment.",
+    );
   }
 
-  if (typeof priced.shipping_charges === "number") {
-    return { shipping: priced.shipping_charges, duplicatePid, imageUrl, source: "price" };
-  }
-  if (typeof matchShipping === "number") {
-    return { shipping: matchShipping, duplicatePid, imageUrl, source: "match" };
-  }
-  throw new MeeshoApiError("bad_response", "Meesho didn't return a shipping charge.");
+  return {
+    shipping: priced.shipping_charges,
+    duplicatePid,
+    imageUrl,
+    source: "price",
+    // The mode outranks "the seller typed a price": it is what says whether
+    // this figure is a ranked answer at all or just the calibration probe.
+    basis: mode === "mirror" ? "panel-mirror" : manual ? "manual" : "photo-match",
+    price: numberOrNull(body.price),
+    gstPercent: numberOrNull(body.gst_percentage),
+    sscatId,
+    debug: {
+      url: template.url ?? ENDPOINTS.price,
+      body,
+      mode,
+      templateDuplicatePid: template.panelDuplicatePid,
+      matchUrl: match?.url ?? ENDPOINTS.match,
+      matchBody: matchBody ?? {},
+      mirrored: true,
+      /** What the panel itself last displayed — the figure we must reproduce. */
+      panelShipping: template.shipping,
+      /** What the PANEL matched the seller's photo to, for comparison. */
+      panelDuplicatePid: panelMatchedPid(),
+      panelRequestAgeMs: Math.max(0, Date.now() - template.at),
+    },
+  };
 }

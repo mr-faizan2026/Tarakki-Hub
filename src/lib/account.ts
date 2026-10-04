@@ -42,6 +42,7 @@ export async function loadAccount(): Promise<Account> {
     id: user.id,
     full_name:
       (user.user_metadata?.full_name as string | undefined) ?? null,
+    phone: null,
     role: "user",
     plan: "free",
     status: "active",
@@ -55,6 +56,9 @@ export async function loadAccount(): Promise<Account> {
     images_used: 0,
     period_start: new Date().toISOString(),
     period_end: new Date().toISOString(),
+    // Never paid — the fallback must not accidentally unlock a paid feature
+    // for an account whose usage row failed to load.
+    paid_until: null,
   };
 
   return { user, profile: safeProfile, usage: safeUsage };

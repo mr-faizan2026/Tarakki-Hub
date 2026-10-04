@@ -7,11 +7,21 @@ import { Wordmark } from "../ui/Wordmark";
  * Sign-in screen — email + password against the same Supabase project as the
  * web app. The extension never creates accounts or handles password resets
  * (those are prohibited/side-effectful flows) — it links out to the web app.
+ *
+ * ── `reason`: WHY THIS SCREEN IS BACK ─────────────────────────────────────
+ * Part 3 can sign a seller out without them asking: the account was blocked, or
+ * this computer was signed out from another one. A sign-in form reappearing with
+ * no explanation is the most alarming thing a paid tool can do — the seller's
+ * first guess is that their data is gone. So the reason is shown once, above the
+ * form, and then consumed (see takeSignOutReason in lib/license.ts).
  */
 export function SignIn({
   onSignIn,
+  reason,
 }: {
   onSignIn: (email: string, password: string) => Promise<string | null>;
+  /** Plain-English explanation for an involuntary sign-out, if there was one. */
+  reason?: string | null;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,11 +50,14 @@ export function SignIn({
       <div className="auth__head">
         <Wordmark size={34} />
         <h1 className="auth__title">Sign in</h1>
-        <p className="auth__sub">
-          Use your TarakkiHub account to read live shipping and make
-          low-shipping images.
-        </p>
+        <p className="auth__sub">Use your TarakkiHub account.</p>
       </div>
+
+      {reason ? (
+        <div className="alert" role="status" style={{ marginBottom: 12 }}>
+          {reason}
+        </div>
+      ) : null}
 
       <form onSubmit={onSubmit} noValidate>
         {submitError ? <div className="alert">{submitError}</div> : null}
@@ -90,7 +103,7 @@ export function SignIn({
       <p className="auth__foot">
         No account?{" "}
         <a href={`${WEB_APP_URL}/signup`} target="_blank" rel="noreferrer">
-          Create one on tarakkihub.com
+          Create one
         </a>
       </p>
     </div>

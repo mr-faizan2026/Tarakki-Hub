@@ -1,0 +1,87 @@
+<!doctype html>
+<!--
+  RECONSTRUCTION of a busy supplier-panel page that is NOT a catalog form —
+  see README.md. This is the negative fixture, and it is the most important one.
+
+  Discovery is deliberately DOM-based with no URL allow-list, so the only thing
+  stopping it from "finding a form" on the orders list is FORM_ANCHOR_TEXT,
+  EXCLUDE_SELECTORS and MIN_FORM_CONTROLS. A relaxed selector that makes a broken
+  catalog form work again can quietly make this page look like one too — and then
+  the panel offers to autofill a seller's order filters.
+
+  So: plenty of inputs, several of them inside filters and search, and one word
+  ("SKU") that appears in FORM_ANCHOR_TEXT, because the real orders table has a
+  SKU column. formRoot() must still return null here.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Orders</title>
+  </head>
+  <body>
+    <header class="css-hdr">
+      <div role="search">
+        <input type="text" placeholder="Search by order ID or SKU" aria-label="Search orders" />
+      </div>
+      <div role="menu" aria-label="Account">
+        <button type="button">Dummy Shop</button>
+      </div>
+    </header>
+
+    <nav role="navigation" aria-label="Main">
+      <a href="/panel/v3/new/orders">Orders</a>
+      <a href="/panel/v3/new/catalogs">Catalogs</a>
+      <a href="/panel/v3/new/payments">Payments</a>
+    </nav>
+
+    <main>
+      <h1>Orders</h1>
+
+      <div role="tablist">
+        <button type="button" role="tab" aria-selected="true">Pending</button>
+        <button type="button" role="tab" aria-selected="false">Shipped</button>
+      </div>
+
+      <aside aria-label="Filters">
+        <label for="from">From</label>
+        <input id="from" type="date" value="" />
+        <label for="to">To</label>
+        <input id="to" type="date" value="" />
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="">All</option>
+          <option value="pending">Pending</option>
+        </select>
+        <label for="sort">Sort</label>
+        <select id="sort">
+          <option value="new">Newest first</option>
+        </select>
+      </aside>
+
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" aria-label="Select all orders" /></th>
+            <th>Order</th>
+            <th>SKU</th>
+            <th>Qty</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" aria-label="Select order 1" /></td>
+            <td>DUMMY-1</td>
+            <td>DUMMY-SKU</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" aria-label="Select order 2" /></td>
+            <td>DUMMY-2</td>
+            <td>DUMMY-SKU</td>
+            <td>2</td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </body>
+</html>

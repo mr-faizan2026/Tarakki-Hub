@@ -1,20 +1,30 @@
+import type { ReactNode } from "react";
 import type { Account } from "@/lib/account";
 import { planLabel } from "@/lib/account";
 import { Wordmark } from "../ui/Wordmark";
 import { Icon } from "../ui/Icon";
 
+/**
+ * The panel header: who is signed in, their plan and credits, the overflow menu
+ * (Part 3) and sign out.
+ *
+ * `menu` is a slot rather than a prop bundle so the header keeps knowing nothing
+ * about devices, onboarding or the licence — it is still just a header.
+ */
 export function Header({
   account,
   onSignOut,
+  menu,
 }: {
   account: Account;
   onSignOut: () => void;
+  menu?: ReactNode;
 }) {
   const credits = account.usage.credits_remaining;
   return (
     <header className="header">
       <Wordmark />
-      <div className="row" style={{ gap: 10 }}>
+      <div className="row" style={{ gap: 8 }}>
         <div className="header__meta">
           <span className="header__email">{account.user.email}</span>
           <span className="header__creds">
@@ -24,6 +34,7 @@ export function Header({
             </span>
           </span>
         </div>
+        {menu}
         <button
           type="button"
           className="btn btn-ghost btn--sm"

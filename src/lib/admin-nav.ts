@@ -46,6 +46,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     match: (p) => p.startsWith("/admin/payments"),
   },
   {
+    label: "Extension",
+    href: "/admin/extension",
+    icon: "puzzle",
+    match: (p) => p.startsWith("/admin/extension"),
+  },
+  {
     label: "Settings",
     href: "/admin/settings",
     icon: "gear",

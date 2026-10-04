@@ -8,6 +8,16 @@ dist-zip
 .vite
 stats.html
 
+# Test fixtures — real product photos used by preview/pipeline.html.
+# They're someone's catalog images, not source.
+preview/*.jpg
+preview/*.jpeg
+preview/*.png
+preview/*.webp
+
 # OS
 .DS_Store
 Thumbs.db
+
+# Release zips built by scripts/build-zip.mjs
+release/
