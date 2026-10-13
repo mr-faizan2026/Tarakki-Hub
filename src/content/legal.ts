@@ -29,9 +29,18 @@ export const LEGAL = {
   /** Display form; `whatsappNumber` is the E.164 form wa.me needs. */
   whatsapp: "+91 8076 961 072",
   whatsappNumber: "918076961072",
-  website: "https://www.tarakkihub.com",
-  /** TODO — required before a live payment gateway can be activated. */
-  registeredAddress: null as string | null,
+  /* Apex, not www — see the cutover note: the extension calls
+     https://tarakkihub.com/api/extension/* and its manifest permits only that
+     host, so the apex is the canonical origin and www redirects to it. */
+  website: "https://tarakkihub.com",
+  /**
+   * Rendered on /contact, and required there before a payment aggregator will
+   * activate a live merchant account. Newlines are kept — the contact page
+   * prints it with `whitespace-pre-line`.
+   */
+  registeredAddress: `Street No. 01, Chand Bagh
+New Delhi 110094
+India` as string | null,
 } as const;
 
 /**

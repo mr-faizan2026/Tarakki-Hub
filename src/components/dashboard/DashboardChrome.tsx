@@ -9,20 +9,24 @@ import { Icon } from "@/components/ui/Icon";
 type Props = {
   fullName: string | null;
   email: string | null;
-  plan: string;
+  /** Already resolved by the layout — "Paid", "Pro", "Free". */
+  planLabel: string;
   isAdmin?: boolean;
   creditsRemaining: number;
   creditsTotal: number;
+  /** usage.paid_until — null for an account that has never bought a pack. */
+  paidUntil: string | null;
   children: ReactNode;
 };
 
 export function DashboardChrome({
   fullName,
   email,
-  plan,
+  planLabel,
   isAdmin = false,
   creditsRemaining,
   creditsTotal,
+  paidUntil,
   children,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -41,10 +45,11 @@ export function DashboardChrome({
       {/* Desktop rail */}
       <aside className="sticky top-0 hidden h-dvh border-r border-hairline bg-surface lg:block">
         <SidebarContent
-          plan={plan}
+          planLabel={planLabel}
           isAdmin={isAdmin}
           creditsRemaining={creditsRemaining}
           creditsTotal={creditsTotal}
+          paidUntil={paidUntil}
         />
       </aside>
 
@@ -91,10 +96,11 @@ export function DashboardChrome({
                 <Icon name="close" size={18} />
               </button>
               <SidebarContent
-                plan={plan}
+                planLabel={planLabel}
                 isAdmin={isAdmin}
                 creditsRemaining={creditsRemaining}
                 creditsTotal={creditsTotal}
+                paidUntil={paidUntil}
                 onNavigate={() => setOpen(false)}
               />
             </motion.aside>

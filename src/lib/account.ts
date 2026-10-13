@@ -68,3 +68,52 @@ export async function loadAccount(): Promise<Account> {
 export function creditsTotal(usage: Usage): number {
   return Math.max(usage.credits_remaining + usage.images_used, 1);
 }
+
+/**
+ * ════════════════════════════════════════════════════════════════════════════
+ *  IS THIS ACCOUNT PAID, AND UNTIL WHEN — the one place that answers it
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ *  ── WHY THIS EXISTS ───────────────────────────────────────────────────────
+ *  Four surfaces asked that question and three got it wrong. A seller who had
+ *  just paid ₹99 saw, on one screen: "PAID" on the billing card, "FREE PLAN" in
+ *  the sidebar, "Current plan: Free — Pricing launching soon" on the overview,
+ *  and an "Extension license: FREE" card telling them a subscription would
+ *  unlock things "once paid plans launch".
+ *
+ *  Every one of those read `profiles.plan`, which buying a credit pack
+ *  deliberately does NOT change — a pack is not a plan, and that column still
+ *  belongs to the admin panel's "grant a plan by hand" feature.
+ *
+ *  So the answer lives here, once, and mirrors `has_active_plan()` in
+ *  0005_billing.sql exactly: an unexpired pack OR an admin-granted paid plan.
+ *  If that SQL changes, change this with it.
+ */
+export type AccessStatus = {
+  /** Paid access is live right now. */
+  paid: boolean;
+  /** When paid access ends (ISO), or null for an account that never bought. */
+  until: string | null;
+  /** The status word for a badge or tile: "Paid", "Pro", "Free". */
+  label: string;
+};
+
+export function accessStatus(profile: Profile, usage: Usage): AccessStatus {
+  const until = usage.paid_until;
+  const packActive = until != null && new Date(until).getTime() > Date.now();
+
+  // An admin can still grant a plan directly; that path predates packs and has
+  // to keep working. Mirrors is_paid_plan() — anything that isn't "free".
+  const grantedPlan = profile.plan.trim().toLowerCase();
+  const grantedActive = grantedPlan !== "" && grantedPlan !== "free";
+
+  if (packActive) return { paid: true, until, label: "Paid" };
+  if (grantedActive) {
+    return {
+      paid: true,
+      until: null,
+      label: profile.plan.charAt(0).toUpperCase() + profile.plan.slice(1),
+    };
+  }
+  return { paid: false, until: null, label: "Free" };
+}

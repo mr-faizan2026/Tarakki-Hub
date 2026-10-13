@@ -368,3 +368,26 @@ Leave the keys blank and the site still runs: packs render and checkout answers
    ngrok/cloudflared tunnel.
 3. `npm test` checks the webhook signature verification against Cashfree's
    documented algorithm. Run it after touching `src/lib/cashfree.ts`.
+
+### ⚠️ Vercel functions must run in Mumbai (`bom1`)
+
+`vercel.json` pins `"regions": ["bom1"]`. This is not a latency preference — it
+is load-bearing:
+
+**Cashfree's API geo-blocks requests from outside India.** A call from a US
+region comes back as a CloudFront `403` with *"configured to block access from
+your country"* — and it is an HTML error page, not JSON, so it surfaces as a
+confusing parse error rather than an obvious "you are blocked".
+
+Vercel defaults **every new project to `iad1` (Washington, D.C.)**. Left alone,
+checkout and the webhook's order-verification call would both fail in
+production while working perfectly on the developer's machine in India. That is
+the worst shape a bug can have.
+
+`bom1` is also simply correct for this product: the sellers are in India, the
+Supabase project is `ap-south-1`, and the payment gateway is Indian. Running the
+functions in Virginia means every database query and every Cashfree call crosses
+the planet twice.
+
+The Hobby plan allows exactly one region, which is all this needs. If the
+deployment ever moves to a team account, keep `bom1` first.

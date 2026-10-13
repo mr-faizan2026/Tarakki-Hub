@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { loadAccount } from "@/lib/account";
+import { loadAccount, accessStatus } from "@/lib/account";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader } from "@/components/dashboard/Card";
 import { CreditMeter } from "@/components/dashboard/CreditMeter";
@@ -49,8 +49,8 @@ export default async function BillingPage({
   const { order_id: orderId } = await searchParams;
   const gatewayLive = cashfreeConfig() !== null;
 
-  const paidUntil = usage.paid_until ? new Date(usage.paid_until) : null;
-  const paidActive = paidUntil !== null && paidUntil.getTime() > Date.now();
+  const access = accessStatus(profile, usage);
+  const paidActive = access.paid;
   const expired =
     usage.credits_remaining > 0 &&
     usage.period_end != null &&
@@ -98,9 +98,9 @@ export default async function BillingPage({
                 </>
               )}
             </p>
-            {paidActive && (
+            {access.until && (
               <p className="mt-1.5 text-micro text-ink-400">
-                Autofill active until {formatDate(usage.paid_until!)}
+                Autofill active until {formatDate(access.until)}
               </p>
             )}
           </div>

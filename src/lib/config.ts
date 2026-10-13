@@ -46,3 +46,15 @@ export function siteUrl(): string {
 
   return "http://localhost:3000";
 }
+
+/**
+ * ── The sibling product ─────────────────────────────────────────────────────
+ * ecomtools.tarakkihub.com is a SEPARATE Tarakki Hub application — the
+ * dropshipping and shipping portal (courier integrations, bulk order booking,
+ * prepaid wallet, COD payouts). It shares the brand and the domain, nothing
+ * else: no shared session, no shared database.
+ *
+ * Kept here rather than inline so the one link on the marketing page and any
+ * future ones cannot drift apart.
+ */
+export const ECOM_TOOLS_URL = "https://ecomtools.tarakkihub.com/";

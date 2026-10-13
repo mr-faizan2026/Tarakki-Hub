@@ -1,4 +1,4 @@
-import { loadAccount } from "@/lib/account";
+import { loadAccount, accessStatus } from "@/lib/account";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/dashboard/Card";
 import { StatTile } from "@/components/dashboard/StatTile";
@@ -9,7 +9,7 @@ import {
   type ActivityItem,
 } from "@/components/dashboard/RecentActivity";
 import { Icon } from "@/components/ui/Icon";
-import { firstName, titleCase } from "@/lib/format";
+import { firstName, formatDate } from "@/lib/format";
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -36,7 +36,8 @@ export default async function OverviewPage() {
     at: e.created_at,
   }));
 
-  const planActive = profile.plan.toLowerCase() !== "free";
+  // One source of truth — see accessStatus() in lib/account.ts for why.
+  const access = accessStatus(profile, usage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,9 +55,15 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <StatTile
           icon="creditCard"
-          label="Current plan"
-          value={titleCase(profile.plan)}
-          sub="Pricing launching soon"
+          label="Your credits"
+          value={access.label}
+          sub={
+            access.until
+              ? `Valid to ${formatDate(access.until)}`
+              : access.paid
+                ? "Granted by TarakkiHub"
+                : "Buy a pack to add more"
+          }
         />
         <StatTile
           icon="spark"
@@ -91,7 +98,7 @@ export default async function OverviewPage() {
         </Card>
 
         <div className="flex flex-col gap-6">
-          <LicenseCard plan={profile.plan} active={planActive} />
+          <LicenseCard access={access} />
           <ChromeExtensionCard />
         </div>
       </div>

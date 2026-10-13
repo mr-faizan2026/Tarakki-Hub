@@ -7,23 +7,35 @@ import { Icon } from "@/components/ui/Icon";
 import { CreditMeter } from "@/components/dashboard/CreditMeter";
 import { SignOutForm } from "@/components/dashboard/SignOutForm";
 import { NAV_ITEMS } from "@/lib/dashboard-nav";
-import { titleCase } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 type Props = {
-  plan: string;
+  /**
+   * The status word, already resolved by the dashboard layout via
+   * accessStatus() — "Paid", "Pro", "Free".
+   *
+   * It is NOT profiles.plan. Buying a credit pack deliberately leaves that
+   * column alone, so reading it here once told a seller who had just paid ₹99
+   * that they were on the FREE PLAN, while the billing page beside it said
+   * PAID.
+   */
+  planLabel: string;
   isAdmin?: boolean;
   creditsRemaining: number;
   creditsTotal: number;
+  /** When paid access ends; null when there is nothing to expire. */
+  paidUntil?: string | null;
   /** Close the mobile drawer on navigation. */
   onNavigate?: () => void;
 };
 
 export function SidebarContent({
-  plan,
+  planLabel,
   isAdmin = false,
   creditsRemaining,
   creditsTotal,
+  paidUntil,
   onNavigate,
 }: Props) {
   const pathname = usePathname();
@@ -92,7 +104,7 @@ export function SidebarContent({
       <div className="mt-auto px-3 pb-3">
         <div className="rounded-xl border border-hairline bg-canvas-sunk/60 p-4">
           <div className="flex items-center justify-between">
-            <span className="label-mono text-ink-500">{titleCase(plan)} plan</span>
+            <span className="label-mono text-ink-500">{planLabel}</span>
             <span className="text-small font-semibold tabular-nums text-ink-900">
               {creditsRemaining}
             </span>
@@ -101,6 +113,13 @@ export function SidebarContent({
           <p className="mt-2 text-micro text-ink-500">
             {creditsRemaining === 1 ? "1 credit left" : `${creditsRemaining} credits left`}
           </p>
+          {/* Credits expire now (0005), so the date is not decoration — a seller
+              with 300 credits that lapse on Friday needs to know it is Friday. */}
+          {paidUntil ? (
+            <p className="mt-0.5 text-micro text-ink-400">
+              Valid to {formatDate(paidUntil)}
+            </p>
+          ) : null}
           <Link
             href="/dashboard/credits"
             onClick={onNavigate}

@@ -38,10 +38,20 @@ export const metadata: Metadata = {
  */
 
 /** Bump this — and nothing else about it — whenever the text below changes. */
-const LAST_UPDATED = "3 October 2026";
+const LAST_UPDATED = "8 October 2026";
 
-/** The one place to change if support moves. */
-const CONTACT_EMAIL = "support@tarakkihub.com";
+/**
+ * The one place to change if support moves.
+ *
+ * NOT support@tarakkihub.com: the domain carries no MX records, so that address
+ * cannot receive mail at all and every message sent to it bounces. This page's
+ * address is also the one handed to the Chrome Web Store, so a seller — or a
+ * reviewer — writing to it must actually reach someone.
+ *
+ * Switch this back to a tarakkihub.com address once mail is set up on the
+ * domain (an MX record, or forwarding at the registrar).
+ */
+const CONTACT_EMAIL = "tarakkihub.com@gmail.com";
 
 function Section({
   id,

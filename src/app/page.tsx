@@ -9,6 +9,7 @@ import { SocialProof } from "@/components/site/SocialProof";
 import { Pricing } from "@/components/site/Pricing";
 import { FAQ } from "@/components/site/FAQ";
 import { FinalCTA } from "@/components/site/FinalCTA";
+import { ZeroInvestment } from "@/components/site/ZeroInvestment";
 import { Footer } from "@/components/site/Footer";
 
 export default function Home() {
@@ -26,6 +27,7 @@ export default function Home() {
         <Pricing />
         <FAQ />
         <FinalCTA />
+        <ZeroInvestment />
       </main>
       <Footer />
     </>

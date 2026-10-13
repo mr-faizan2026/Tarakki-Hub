@@ -43,7 +43,7 @@ export default function BlockedPage() {
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <a
-              href="mailto:support@tarakkihub.com"
+              href="mailto:tarakkihub.com@gmail.com"
               className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-teal-500 px-5 text-small font-medium text-white shadow-[0_1px_0_0_rgba(11,124,109,0.9),0_10px_24px_-14px_rgba(15,156,136,0.9)] transition-colors hover:bg-teal-600"
             >
               <Icon name="shield" size={16} />
